@@ -3,7 +3,7 @@
 Name: kernel
 ExclusiveArch: aarch64
 Version: 7.1.0
-Release: 2.davinci%{?dist}
+Release: 3.davinci%{?dist}
 # Full kernel release string as printed by `make kernelrelease`
 # (tree Makefile version + EXTRAVERSION + CONFIG_LOCALVERSION=-sm7150)
 %global krel %{version}-%{release}-sm7150
@@ -24,6 +24,7 @@ BuildRequires: python3-devel
 BuildRequires: python3-pyyaml
 BuildRequires: glibc-static
 BuildRequires: rsync
+BuildRequires: file
 BuildRequires: opencsd-devel >= 1.0.0
 BuildRequires: openssl-devel
 
@@ -37,7 +38,9 @@ Requires: %{name}-modules = %{version}-%{release}
 %description
 Mainline kernel fork for Xiaomi Mi 9T / Redmi K20 (davinci, SM7150).
 Config is generated from upstream defconfig merged with the
-in-tree arch/arm64/configs/sm7150.config fragment.
+in-tree arch/arm64/configs/sm7150.config fragment plus
+arch/arm64/configs/efi.config (EFI_ZBOOT so the installed vmlinuz
+is a PE-COFF EFI application bootable via systemd-boot).
 
 %prep
 tar -xzf %{SOURCE1}
@@ -47,17 +50,17 @@ ln -sfn linux-* src
 
 %build
 cd src
-./scripts/kconfig/merge_config.sh -m arch/arm64/configs/defconfig arch/arm64/configs/sm7150.config
+./scripts/kconfig/merge_config.sh -m arch/arm64/configs/defconfig arch/arm64/configs/sm7150.config arch/arm64/configs/efi.config
 make olddefconfig
 
-make EXTRAVERSION="-%{release}" -j%{_smp_build_ncpus} Image.gz modules dtbs
+make EXTRAVERSION="-%{release}" -j%{_smp_build_ncpus} vmlinuz.efi modules dtbs
 
 %install
 cd src
 kernel_version=$(make EXTRAVERSION="-%{release}" kernelrelease)
 
 mkdir -p %{buildroot}/boot/
-cp arch/arm64/boot/Image.gz %{buildroot}/boot/vmlinuz-$kernel_version
+cp arch/arm64/boot/vmlinuz.efi %{buildroot}/boot/vmlinuz-$kernel_version
 cp System.map %{buildroot}/boot/System.map-$kernel_version
 cp .config %{buildroot}/boot/config-$kernel_version
 
@@ -69,7 +72,10 @@ make EXTRAVERSION="-%{release}" modules_install INSTALL_MOD_PATH=%{buildroot}/us
 # supports instead: a real dtb/ directory, no devicetree entry at all.
 mkdir -p %{buildroot}/usr/lib/modules/$kernel_version/dtb
 cp arch/arm64/boot/dts/qcom/sm7150-xiaomi-davinci-samsung.dtb arch/arm64/boot/dts/qcom/sm7150-xiaomi-davinci-visionox.dtb %{buildroot}/usr/lib/modules/$kernel_version/dtb/
-cp arch/arm64/boot/Image.gz %{buildroot}/usr/lib/modules/$kernel_version/vmlinuz
+cp arch/arm64/boot/vmlinuz.efi %{buildroot}/usr/lib/modules/$kernel_version/vmlinuz
+# systemd-boot LoadImage() requires PE-COFF. Fail the build early
+# instead of shipping an unbootable vmlinuz (e.g. raw Image.gz).
+file %{buildroot}/usr/lib/modules/$kernel_version/vmlinuz | grep -q "PE32.*EFI"
 make EXTRAVERSION="-%{release}" headers_install INSTALL_HDR_PATH=%{buildroot}/usr
 rm -f %{buildroot}/usr/lib/modules/$kernel_version/build
 rm -f %{buildroot}/usr/lib/modules/$kernel_version/source
