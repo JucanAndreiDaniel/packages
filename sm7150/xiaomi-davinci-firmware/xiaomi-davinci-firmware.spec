@@ -8,7 +8,7 @@
 
 Name: xiaomi-davinci-firmware
 Version: 1
-Release: 1%{?dist}
+Release: 2%{?dist}
 Summary: Firmware for Xiaomi Mi 9T / Redmi K20 (davinci)
 URL: https://github.com/sm7150-mainline/firmware-xiaomi-davinci
 Source0: %{url}/archive/%{_commit}/firmware-xiaomi-davinci-%{_commit}.tar.gz
