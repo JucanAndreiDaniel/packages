@@ -3,7 +3,7 @@
 Name: kernel
 ExclusiveArch: aarch64
 Version: 7.1.0
-Release: 1.davinci%{?dist}
+Release: 2.davinci%{?dist}
 # Full kernel release string as printed by `make kernelrelease`
 # (tree Makefile version + EXTRAVERSION + CONFIG_LOCALVERSION=-sm7150)
 %global krel %{version}-%{release}-sm7150
@@ -57,15 +57,18 @@ cd src
 kernel_version=$(make EXTRAVERSION="-%{release}" kernelrelease)
 
 mkdir -p %{buildroot}/boot/
-mkdir -p %{buildroot}/usr/lib/modules/$kernel_version/devicetree
 cp arch/arm64/boot/Image.gz %{buildroot}/boot/vmlinuz-$kernel_version
 cp System.map %{buildroot}/boot/System.map-$kernel_version
 cp .config %{buildroot}/boot/config-$kernel_version
 
 make EXTRAVERSION="-%{release}" modules_install INSTALL_MOD_PATH=%{buildroot}/usr DEPMOD=true
-# davinci DTS is split by panel (samsung = tested default, visionox alt)
-cp arch/arm64/boot/dts/qcom/sm7150-xiaomi-davinci-samsung.dtb arch/arm64/boot/dts/qcom/sm7150-xiaomi-davinci-visionox.dtb %{buildroot}/usr/lib/modules/$kernel_version/devicetree
-ln -s ./devicetree %{buildroot}/usr/lib/modules/$kernel_version/dtb
+# davinci DTS is split by panel (samsung = tested default, visionox alt).
+# NOTE: ostree expects usr/lib/modules/<kver>/devicetree to be a SINGLE
+# FILE and tries to checksum-read it, so a devicetree *directory* there
+# breaks deployment ("Is a directory"). Ship the multi-DTB layout ostree
+# supports instead: a real dtb/ directory, no devicetree entry at all.
+mkdir -p %{buildroot}/usr/lib/modules/$kernel_version/dtb
+cp arch/arm64/boot/dts/qcom/sm7150-xiaomi-davinci-samsung.dtb arch/arm64/boot/dts/qcom/sm7150-xiaomi-davinci-visionox.dtb %{buildroot}/usr/lib/modules/$kernel_version/dtb/
 cp arch/arm64/boot/Image.gz %{buildroot}/usr/lib/modules/$kernel_version/vmlinuz
 make EXTRAVERSION="-%{release}" headers_install INSTALL_HDR_PATH=%{buildroot}/usr
 rm -f %{buildroot}/usr/lib/modules/$kernel_version/build
