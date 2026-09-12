@@ -2,8 +2,11 @@
 
 Name: kernel
 ExclusiveArch: aarch64
-Version: 7.1.3
+Version: 7.1.0
 Release: 1.davinci%{?dist}
+# Full kernel release string as printed by `make kernelrelease`
+# (tree Makefile version + EXTRAVERSION + CONFIG_LOCALVERSION=-sm7150)
+%global krel %{version}-%{release}-sm7150
 Summary: Mainline kernel, modules and headers for Xiaomi Mi 9T / Redmi K20 (davinci).
 URL: https://github.com/sm7150-mainline/linux
 Source1: %{url}/archive/refs/tags/%{_tag}.tar.gz
@@ -80,18 +83,18 @@ Summary: Mainline kernel, modules and headers for Xiaomi Mi 9T / Redmi K20 (davi
 Mainline kernel fork for Xiaomi Mi 9T / Redmi K20 (davinci, SM7150).
 
 %files core
-/boot/System.map-%{version}-%{release}
-/boot/config-%{version}-%{release}
-/boot/vmlinuz-%{version}-%{release}
+/boot/System.map-%{krel}
+/boot/config-%{krel}
+/boot/vmlinuz-%{krel}
 
 %posttrans core
-/sbin/depmod -a %{version}-%{release}
-dracut -f --kver %{version}-%{release} /usr/lib/modules/%{version}-%{release}/initramfs.img
-kernel-install add %{version}-%{release} /usr/lib/modules/%{version}-%{release}/vmlinuz /usr/lib/modules/%{version}-%{release}/initramfs.img
+/sbin/depmod -a %{krel}
+dracut -f --kver %{krel} /usr/lib/modules/%{krel}/initramfs.img
+kernel-install add %{krel} /usr/lib/modules/%{krel}/vmlinuz /usr/lib/modules/%{krel}/initramfs.img
 
 
 %postun core
-kernel-install remove %{version}-%{release} /usr/lib/modules/%{version}-%{release}/vmlinuz
+kernel-install remove %{krel} /usr/lib/modules/%{krel}/vmlinuz
 
 
 %package modules
@@ -103,7 +106,7 @@ Requires: %{name}-core = %{version}-%{release}
 Mainline kernel fork for Xiaomi Mi 9T / Redmi K20 (davinci, SM7150).
 
 %files modules
-/usr/lib/modules/%{version}-%{release}/
+/usr/lib/modules/%{krel}/
 
 %package headers
 License: GPL-2.0-only
