@@ -38,19 +38,23 @@ in-tree arch/arm64/configs/sm7150.config fragment.
 
 %prep
 tar -xzf %{SOURCE1}
+# GitHub tag archives don't have a stable top-level dir name across
+# tags, so resolve it once and reuse it via a symlink.
+ln -sfn linux-* src
 
 %build
-cd linux-%{_tag}
+cd src
 ./scripts/kconfig/merge_config.sh -m arch/arm64/configs/defconfig arch/arm64/configs/sm7150.config
 make olddefconfig
 
 make EXTRAVERSION="-%{release}" -j%{_smp_build_ncpus} Image.gz modules dtbs
 
 %install
-cd linux-%{_tag}
+cd src
 kernel_version=$(make EXTRAVERSION="-%{release}" kernelrelease)
 
 mkdir -p %{buildroot}/boot/
+mkdir -p %{buildroot}/usr/lib/modules/$kernel_version/devicetree
 cp arch/arm64/boot/Image.gz %{buildroot}/boot/vmlinuz-$kernel_version
 cp System.map %{buildroot}/boot/System.map-$kernel_version
 cp .config %{buildroot}/boot/config-$kernel_version
@@ -110,3 +114,6 @@ Mainline kernel headers for Xiaomi Mi 9T / Redmi K20 (davinci).
 
 %files headers
 /usr/include/
+
+%changelog
+%autochangelog
