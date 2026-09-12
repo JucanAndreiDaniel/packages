@@ -1,4 +1,8 @@
 %global _commit 7c25d3fe5883f25f8f068e89c6442b4c608835f0
+# modem blobs are prebuilt ELF files: don't autogenerate
+#Requires/Provides from their NEEDED entries (see pipa firmware spec)
+%global __requires_exclude ^.*\\.so.*$
+%global __provides_exclude ^.*\\.so.*$
 %global _firmwaredir %{_prefix}/lib/firmware
 %global _qcomdir %{_firmwaredir}/qcom/sm7150
 
