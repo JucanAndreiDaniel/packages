@@ -3,13 +3,16 @@
 Name: kernel
 ExclusiveArch: aarch64
 Version: 7.1.0
-Release: 3.davinci%{?dist}
+Release: 4.davinci%{?dist}
 # Full kernel release string as printed by `make kernelrelease`
 # (tree Makefile version + EXTRAVERSION + CONFIG_LOCALVERSION=-sm7150)
 %global krel %{version}-%{release}-sm7150
 Summary: Mainline kernel, modules and headers for Xiaomi Mi 9T / Redmi K20 (davinci).
 URL: https://github.com/sm7150-mainline/linux
 Source1: %{url}/archive/refs/tags/%{_tag}.tar.gz
+# Local config fragment with parent symbols missing from arm64 defconfig
+# (without it, olddefconfig silently drops e.g. the UFS storage stack).
+Source2: davinci-fixups.config
 License: GPL-2.0-only
 
 BuildRequires: kmod, bash, coreutils, tar, git-core, which
@@ -40,17 +43,20 @@ Mainline kernel fork for Xiaomi Mi 9T / Redmi K20 (davinci, SM7150).
 Config is generated from upstream defconfig merged with the
 in-tree arch/arm64/configs/sm7150.config fragment plus
 arch/arm64/configs/efi.config (EFI_ZBOOT so the installed vmlinuz
-is a PE-COFF EFI application bootable via systemd-boot).
+is a PE-COFF EFI application bootable via systemd-boot) plus the
+packaging's davinci-fixups.config (parent symbols missing from
+arm64 defconfig, e.g. for the UFS storage stack).
 
 %prep
 tar -xzf %{SOURCE1}
 # GitHub tag archives don't have a stable top-level dir name across
 # tags, so resolve it once and reuse it via a symlink.
 ln -sfn linux-* src
+cp %{SOURCE2} src/arch/arm64/configs/davinci-fixups.config
 
 %build
 cd src
-./scripts/kconfig/merge_config.sh -m arch/arm64/configs/defconfig arch/arm64/configs/sm7150.config arch/arm64/configs/efi.config
+./scripts/kconfig/merge_config.sh -m arch/arm64/configs/defconfig arch/arm64/configs/sm7150.config arch/arm64/configs/efi.config arch/arm64/configs/davinci-fixups.config
 make olddefconfig
 
 make EXTRAVERSION="-%{release}" -j%{_smp_build_ncpus} vmlinuz.efi modules dtbs
