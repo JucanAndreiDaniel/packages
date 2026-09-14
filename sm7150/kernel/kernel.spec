@@ -3,7 +3,7 @@
 Name: kernel
 ExclusiveArch: aarch64
 Version: 7.1.0
-Release: 5.davinci%{?dist}
+Release: 6.davinci%{?dist}
 # Full kernel release string as printed by `make kernelrelease`
 # (tree Makefile version + EXTRAVERSION + CONFIG_LOCALVERSION=-sm7150)
 %global krel %{version}-%{release}-sm7150
@@ -12,10 +12,11 @@ URL: https://github.com/sm7150-mainline/linux
 Source1: %{url}/archive/refs/tags/%{_tag}.tar.gz
 # Working pmOS 7.1.0-sm7150 /boot/config verbatim (linux-postmarketos-qcom-sm7150
 # 7.1_rc3, same v7.1_rc3 tree): the defconfig+sm7150.config+efi.config fragment
-# merge produced a kernel that dies before console_init. Single documented delta
-# vs verbatim is Source3 (G_SERIAL=m so it doesn't auto-own the UDC).
+# merge produced a kernel that dies before console_init. No deltas: pmOS's
+# builtin G_SERIAL=y is what makes console=ttyGS0 (USB serial) work from
+# kernel init; demoting it to =m (as first tried in R5) leaves no serial
+# until userspace binds a gadget.
 Source2: config-pmos-7.1_rc3
-Source3: usb-gadget.config
 License: GPL-2.0-only
 
 BuildRequires: kmod, bash, coreutils, tar, git-core, which
@@ -45,11 +46,11 @@ Requires: %{name}-modules = %{version}-%{release}
 %description
 Mainline kernel fork for Xiaomi Mi 9T / Redmi K20 (davinci, SM7150).
 Config is the working pmOS 7.1.0-sm7150 /boot/config verbatim
-(linux-postmarketos-qcom-sm7150 7.1_rc3, same v7.1_rc3 tree) plus the single
-documented delta in usb-gadget.config (G_SERIAL=m), built with LLVM=1
-(clang/lld, preserving the pmOS CFI + ThinLTO + ShadowCallStack config).
-The pmOS config already sets EFI_ZBOOT, so the installed vmlinuz is a
-PE-COFF EFI application bootable via systemd-boot.
+(linux-postmarketos-qcom-sm7150 7.1_rc3, same v7.1_rc3 tree), built with
+LLVM=1 (clang/lld, preserving the pmOS CFI + ThinLTO + ShadowCallStack
+config). The pmOS config already sets EFI_ZBOOT, so the installed vmlinuz
+is a PE-COFF EFI application bootable via systemd-boot; its builtin
+G_SERIAL keeps the pmOS console=ttyGS0 USB serial working.
 
 %prep
 tar -xzf %{SOURCE1}
@@ -57,12 +58,9 @@ tar -xzf %{SOURCE1}
 # tags, so resolve it once and reuse it via a symlink.
 ln -sfn linux-* src
 cp %{SOURCE2} src/.config
-cp %{SOURCE3} src/arch/arm64/configs/usb-gadget.config
 
 %build
 cd src
-# Single documented delta vs verbatim pmOS config (see usb-gadget.config).
-./scripts/config --module CONFIG_USB_G_SERIAL
 make LLVM=1 olddefconfig
 
 make LLVM=1 EXTRAVERSION="-%{release}" -j%{_smp_build_ncpus} vmlinuz.efi modules dtbs
